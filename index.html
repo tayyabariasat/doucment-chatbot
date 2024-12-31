@@ -1,0 +1,149 @@
+<!-- static/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Chatbot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .chat-container {
+            border: 1px solid #ccc;
+            padding: 20px;
+            margin-top: 20px;
+            height: 400px;
+            overflow-y: auto;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .user-message {
+            background-color: #e3f2fd;
+            margin-left: 20%;
+        }
+        .bot-message {
+            background-color: #f5f5f5;
+            margin-right: 20%;
+        }
+        .input-container {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #2196f3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #1976d2;
+        }
+    </style>
+</head>
+<body>
+    <h1>Document Chatbot</h1>
+    
+    <div>
+        <h2>Upload Document</h2>
+        <input type="file" id="document" accept=".pdf">
+        <button onclick="uploadDocument()">Upload</button>
+    </div>
+
+    <div class="chat-container" id="chat">
+    </div>
+
+    <div class="input-container">
+        <input type="text" id="question" placeholder="Ask a question...">
+        <button onclick="askQuestion()">Send</button>
+    </div>
+
+    <script>
+        let currentDocId = null;
+
+        async function uploadDocument() {
+            const fileInput = document.getElementById('document');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a file');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                currentDocId = data.doc_id;
+                alert('Document uploaded successfully!');
+            } catch (error) {
+                alert('Error uploading document');
+                console.error(error);
+            }
+        }
+
+        async function askQuestion() {
+            if (!currentDocId) {
+                alert('Please upload a document first');
+                return;
+            }
+
+            const questionInput = document.getElementById('question');
+            const question = questionInput.value;
+            
+            if (!question) return;
+
+            addMessage(question, 'user');
+            questionInput.value = '';
+
+            try {
+                const response = await fetch(`/chat/${currentDocId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text: question })
+                });
+                const data = await response.json();
+                addMessage(data.answer, 'bot');
+            } catch (error) {
+                alert('Error getting response');
+                console.error(error);
+            }
+        }
+
+        function addMessage(text, sender) {
+            const chat = document.getElementById('chat');
+            const message = document.createElement('div');
+            message.className = `message ${sender}-message`;
+            message.textContent = text;
+            chat.appendChild(message);
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        document.getElementById('question').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                askQuestion();
+            }
+        });
+    </script>
+</body>
+</html>
